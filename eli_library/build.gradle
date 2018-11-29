@@ -1,0 +1,62 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 28
+
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 28
+        flavorDimensions "releaseType"
+    }
+    productFlavors {
+        baidu {
+            dimension "releaseType"
+            buildConfigField "String", "WEB_URL", '"http://baidu.com"'
+        }
+        google {
+            dimension "releaseType"
+            buildConfigField "String", "WEB_URL", '"http://google.com/"'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+
+def SDK_BASENAME = "EliSDK"
+def SDK_VERSION = "_V1.0.0"
+def sdkDestinationPath = "build/outputs/jar/"
+
+task deleteBuild(type: Delete) {
+    delete sdkDestinationPath
+}
+
+task makeJar(type: Jar) {
+    def zipFile = file('build/intermediates/classes/baidu/release/')
+    from fileTree(zipFile)
+    from fileTree(dir: 'src/main', includes: ['assets/**'])
+    baseName = SDK_BASENAME + SDK_VERSION + "_baidu"
+    destinationDir = file(sdkDestinationPath)
+}
+//打出webUrl修改了的jar包
+task makeGoogleJar(type: Jar) {
+    def zipFile = file('build/intermediates/classes/google/release/')
+    from fileTree(zipFile)
+    from fileTree(dir: 'src/main', includes: ['assets/**'])
+    baseName = SDK_BASENAME + SDK_VERSION + "_google"
+    destinationDir = file(sdkDestinationPath)
+}
+//修改包名
+task changePackGoogle(type: Exec) {
+    def appBuildDir = file("build/outputs/jar/")
+    workingDir appBuildDir
+    //执行修改包名的命令
+    commandLine 'java', '-jar', '../../../../jarjar/jarjar-1.4.jar', 'process', '../../../../jarjar/rule_google.txt', SDK_BASENAME + SDK_VERSION + "_google" + ".jar", SDK_BASENAME + SDK_VERSION + "_google" + ".jar"
+}
+changePackGoogle.dependsOn makeGoogleJar//执行changePackGoogle Task前先执行makeGoogleJar Task
+
+
+makeJar.dependsOn(deleteBuild, build)
+makeJar.finalizedBy changePackGoogle//执行makeJar Task后执行changePackGoogle Task
